@@ -19,9 +19,17 @@ int main(int argc, const char * argv[]) {
     m1.multVec(v1, v2);
     
     mat44f m2 = m1.inverse();
+
+	v2 = vec3f(120, 23, 10);
+	v2.normalize();
     
     Mat44Util::debug_print(m1);
     Mat44Util::debug_print(m2);
     Mat44Util::debug_print(m1 * m2);
     Vec3Util::debug_print(v2);
+
+#ifdef _WIN32
+	int i = 0;
+	std::cin >> i;
+#endif
 }
