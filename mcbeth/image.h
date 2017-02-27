@@ -12,11 +12,13 @@
 #define image_h
 
 #include <stdio.h>
-#include "vec3.h"
+#include <string.h>
+#include <iostream>
+#include "math_macros.h"
 
 struct RGB
 {
-	unsigned char r, g, b;
+	float r, g, b;
 };
 
 // Represents a basic image holding R, G and B data.
@@ -32,6 +34,8 @@ public:
 
 	int getWidth() const { return w;  }
 	int getHeight() const { return h; }
+    
+    void fill(RGB color) const { for (int i = 0; i < w * h; i++) { pixels[i] = color; } }
 
 	const RGB operator[] (const unsigned int &i) const { return pixels[i]; }
 	RGB operator[] (const unsigned int &i) { return pixels[i]; }
@@ -42,10 +46,10 @@ public:
 };
 
 const RGB Image::kBlack = { 0, 0, 0 };
-const RGB Image::kWhite = { 0, 0, 0 };
-const RGB Image::kRed = { 0, 0, 0 };
-const RGB Image::kGreen = { 0, 0, 0 };
-const RGB Image::kBlue = { 0, 0, 0 };
+const RGB Image::kWhite = { 1, 1, 1 };
+const RGB Image::kRed = { 1, 0, 0 };
+const RGB Image::kGreen = { 0, 1, 0 };
+const RGB Image::kBlue = { 0, 0, 1 };
 
 //Tries to read a PPM image file.
 //string = path to file
@@ -123,7 +127,7 @@ Image* readPPM(const char* string)
 		unsigned char r = pixel_buff[i];
 		unsigned char g = pixel_buff[i + 1];
 		unsigned char b = pixel_buff[i + 2];
-		RGB pixel = { r, g, b };
+		RGB pixel = { (float)(r/maxval), (float)(g/maxval), (float)(b/maxval) };
 		img->pixels[i/3] = pixel;
 	}
 
@@ -136,8 +140,8 @@ Image* readPPM(const char* string)
 //writes with 255 maxval (1-byte per color component)
 //returns 0 if success, otherwise non-zero.
 int writePPM(const char* dest, const Image& img) {
-
-	FILE* file = fopen(dest, "wb");
+    
+	FILE* file = fopen(dest, "wb+");
 	if (!file)
 		return -1;
 
@@ -146,7 +150,41 @@ int writePPM(const char* dest, const Image& img) {
 
 	char magic_header[3] = { 'P', '6', ' '};
 	fwrite(magic_header, sizeof(char), sizeof(magic_header), file);
+    
+    char ascii_nums[21] = { 0 };
+    sprintf(ascii_nums, "%d", w);
+    size_t size = strlen(ascii_nums);
 
+    //push the width
+    fwrite(ascii_nums, sizeof(char), size, file);
+    putc(' ', file);
+    
+    sprintf(ascii_nums, "%d", h);
+    size = strlen(ascii_nums);
+    
+    //push the height
+    fwrite(ascii_nums, sizeof(char), size, file);
+    putc(' ', file);
+    
+    //push maxval (255)
+    char maxval[4] = { '2', '5', '5', ' '};
+    fwrite(maxval, sizeof(char), sizeof(maxval), file);
+    
+    char pixel_buff[3] = { 0 };
+    for(int i = 0; i < w * h; i++)
+    {
+        RGB pixel = img.pixels[i];
+        
+        clamp<float>(pixel.r, 0, 1);
+        clamp<float>(pixel.g, 0, 1);
+        clamp<float>(pixel.b, 0, 1);
+        
+        pixel_buff[0] = pixel.r * 255;
+        pixel_buff[1] = pixel.g * 255;
+        pixel_buff[2] = pixel.b * 255;
+        fwrite(pixel_buff, sizeof(char), sizeof(pixel_buff), file);
+    }
+    
 	fclose(file);
 
 	return 0;
