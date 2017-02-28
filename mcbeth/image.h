@@ -37,8 +37,8 @@ public:
     
     void fill(RGB color) const { for (int i = 0; i < w * h; i++) { pixels[i] = color; } }
 
-	const RGB operator[] (const unsigned int &i) const { return pixels[i]; }
-	RGB operator[] (const unsigned int &i) { return pixels[i]; }
+	const RGB& operator[] (const unsigned int &i) const { return pixels[i]; }
+	RGB& operator[] (const unsigned int &i) { return pixels[i]; }
 
 	RGB* pixels;
 
@@ -136,7 +136,7 @@ Image* readPPM(const char* string)
 	return img;
 }
 
-//tries to write a PPM file from a Image class
+//tries to write a PPM file from an Image class
 //writes with 255 maxval (1-byte per color component)
 //returns 0 if success, otherwise non-zero.
 int writePPM(const char* dest, const Image& img) {

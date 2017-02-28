@@ -13,6 +13,7 @@
 #define matrix4x4_h
 
 #include <stdint.h>
+#include "vec3.h"
 
 template<typename T>
 class Matrix4x4
@@ -214,8 +215,8 @@ public:
 	template<typename T>
 	static Matrix4x4<T> look_at(const Vec3<T>& pos, const Vec3<T>& lookAt)
 	{
-		Vec3<T> forward = Vec3Util::normalize(from - t)o;
-		Vec3<T> temp = Vec3(0, 1, 0);
+		Vec3<T> forward = Vec3Util::normalize(pos - lookAt);
+		Vec3<T> temp = vec3f(0, 1, 0);
 		Vec3<T> right = forward.cross(temp);
 		Vec3<T> up = forward.cross(right);
 
@@ -230,9 +231,9 @@ public:
 		ret[2][1] = forward.y;
 		ret[2][2] = forward.z;
 
-		ret[3][0] = from.x;
-		ret[3][1] = from.y;
-		ret[3][2] = from.z;
+		ret[3][0] = pos.x;
+		ret[3][1] = pos.y;
+		ret[3][2] = pos.z;
 
 		return ret;
 	}
