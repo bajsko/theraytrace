@@ -2,6 +2,7 @@
 #include "image.h"
 #include "matrix4x4.h"
 #include <algorithm>
+#include <time.h>
 
 //CIE color matching func from 380-750 nm. x 5nm ss
 const float colorMatchingFunc[3][72] =
@@ -51,20 +52,43 @@ float D65[72] =
     71.6091, 72.979, 74.349, 67.9765, 61.604, 65.7448, 69.8856, 72.4863,
 };
 
+inline float linerp(const float *f, const short &i, const float &t, const int &max)
+{ return f[i] * (1 - t) + f[std::min(max, i + 1)] * t; }
+
 void spectrumToXYZ(int colorIndex, float& X, float& Y, float& Z)
 {
+    int nbins = 32;
     float S = 0;
-    for (int i = 0; i < 36; i++)
+    float lambdaMin = 380;
+    float lambdaMax = 750;
+    float r = 0;
+    float N = 32;
+    for (int i = 0; i < N; i++)
     {
-        X += colorMatchingFunc[0][i * 2] * spectralData[colorIndex][i];
-        Y += colorMatchingFunc[1][i * 2] * spectralData[colorIndex][i];
-        Z += colorMatchingFunc[2][i * 2] * spectralData[colorIndex][i];
-        S += colorMatchingFunc[1][i * 2];
+        r = (float)rand() / (float)RAND_MAX;
+        float lambda = r * (lambdaMax - lambdaMin);
+        float b = lambda / 10;
+        short j = (short)b;
+        float t = b-j;
+        
+        float fx = linerp(spectralData[colorIndex], j, t, nbins - 1);
+        
+        b = lambda / 5;
+        j = (short)b;
+        t = b-j;
+        
+        X += linerp(colorMatchingFunc[0], j, t, 2 * nbins - 1) * fx;
+        Y += linerp(colorMatchingFunc[1], j, t, 2 * nbins - 1) * fx;
+        Z += linerp(colorMatchingFunc[2], j, t, 2 * nbins - 1) * fx;
+        S += linerp(colorMatchingFunc[1], j, t, 2 * nbins - 1);
+        
     }
     
-    X /= S;
-    Y /= S;
-    Z /= S;
+    S *= (lambdaMax - lambdaMin) / N;
+    //integral = (max-min)*1/n*sum(i=0) ^ (N-1) f(x_i), normalize
+    X *= (lambdaMax - lambdaMin) / N / S;
+    Y *= (lambdaMax - lambdaMin) / N / S;
+    Z *= (lambdaMax - lambdaMin) / N / S;
 }
 
 const double XYZ_to_RGB[][3] = {
@@ -83,27 +107,39 @@ void XYZtoRGB(const float& X, const float& Y, const float& Z, float& r, float& g
 
 int main(int argc, char** argv) {
     
-    int cellSize = 64;
+    srand((unsigned)time(NULL));
+    int cellSize = 128;
     Image img(cellSize * 6, cellSize * 4);
     
-    float rgb[24][3];
-    for(int i = 0; i < 24; i++)
-    {
-        float X,Y,Z;
-        spectrumToXYZ(i, X, Y, Z);
-        XYZtoRGB(X, Y, Z, rgb[i][0], rgb[i][1], rgb[i][2]);
-    }
+    int passes = 32;
     
-    for(int x = 0; x < img.getWidth(); x++)
+    int i = 0;
+    while(i < passes)
     {
-        for(int y = 0; y < img.getHeight(); y++)
+        for(int x = 0; x < img.getWidth(); x++)
         {
-            int pixel = x + y * img.getWidth();
-            int cell = (x/cellSize) + (y/cellSize) * img.getWidth()/cellSize;
-            img.pixels[pixel].r = rgb[cell][0];
-            img.pixels[pixel].g = rgb[cell][1];
-            img.pixels[pixel].b = rgb[cell][2];
+            for(int y = 0; y < img.getHeight(); y++)
+            {
+                int pixel = x + y * img.getWidth();
+                int cell = (x/cellSize) + (y/cellSize) * (img.getWidth()/cellSize);
+            
+                float X = 0, Y = 0, Z = 0;
+                spectrumToXYZ(cell, X, Y, Z);
+                float r = 0, g = 0, b = 0;
+                XYZtoRGB(X, Y, Z, r, g, b);
+                img.pixels[pixel].r += r;
+                img.pixels[pixel].g += g;
+                img.pixels[pixel].b += b;
+            }
         }
+        i++;
+   }
+    
+    for(int i = 0; i < img.getWidth() * img.getHeight(); i++)
+    {
+        img.pixels[i].r /= passes;
+        img.pixels[i].g /= passes;
+        img.pixels[i].b /= passes;
     }
     
     writePPM("output.ppm", img);
