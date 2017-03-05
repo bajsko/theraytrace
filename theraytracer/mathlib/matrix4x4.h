@@ -13,6 +13,7 @@
 #define matrix4x4_h
 
 #include <stdint.h>
+#include "vec3.h"
 
 template<typename T>
 class Matrix4x4

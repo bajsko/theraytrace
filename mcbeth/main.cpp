@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
     int cellSize = 128;
     Image img(cellSize * 6, cellSize * 4);
     
-    int passes = 32;
+    int passes = 2;
     
     int i = 0;
     while(i < passes)

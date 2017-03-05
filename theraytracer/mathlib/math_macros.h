@@ -16,7 +16,6 @@
 #define _USE_MATH_DEFINES
 #endif
 #include <math.h>
-#include "dll.h"
 
 //Multiply an angle (measured in radians) with this number to convert it to degrees
 #define RAD_TO_DEG 180/M_PI
