@@ -25,6 +25,7 @@ public:
     Vec3() : x(T(0)), y(T(0)), z(T(0)) {}
     Vec3(T xx) : x(xx), y(xx), z(xx) {}
     Vec3(T xx, T yy, T zz) : x(xx), y(yy), z(zz) {}
+	Vec3(const Vec3<T>& v) : x(v.x), y(v.y), z(v.z) {}
     
 	Vec3<T>& operator = (const Vec3<T>& rhs)
 	{
