@@ -241,7 +241,7 @@ public:
 	{
 		Vec3<T> forward = Vec3Util::normalize(pos - lookAt);
 		Vec3<T> temp = vec3f(0, 1, 0);
-		Vec3<T> right = forward.cross(temp);
+		Vec3<T> right = temp.cross(forward);
 		Vec3<T> up = forward.cross(right);
 
 		Matrix4x4<T> ret;

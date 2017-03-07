@@ -109,32 +109,71 @@ const uint32_t tris[numTris * 3] = {
 	112, 143, 116, 116, 143, 144, 116, 145, 119
 };
 
-void computePixelCoordinates(const vec3f pWorld, vec3f& raster, const mat44f& worldToCamera,
-	const float& canvasWidth, const float& canvasHeight, const uint32_t& imgWidth, const uint32_t& imgHeight)
+bool computePixelCoordinates(const vec3f pWorld, vec3f& raster, const mat44f& worldToCamera,
+	const mat44f& canvasImgStuff)
 {
 	vec3f cam;
 	worldToCamera.multVec(pWorld, cam);
 	vec3f screen;
-	screen.x = cam.x / -cam.z;
-	screen.y = cam.y / -cam.z;
+	screen.x = cam.x / -cam.z * canvasImgStuff[3][0];
+	screen.y = cam.y / -cam.z * canvasImgStuff[3][0];
 	vec3f ndc;
+
+	float canvasWidth = canvasImgStuff[2][0];
+	float canvasHeight = canvasImgStuff[2][1];
+
+	float imgWidth = canvasImgStuff[1][0];
+	float imgHeight = canvasImgStuff[1][1];
+
+	float left = canvasImgStuff[0][0];
+	float right = canvasImgStuff[0][1];
+	float bottom = canvasImgStuff[0][2];
+	float top = canvasImgStuff[0][3];
+
+	Vec3Util::debug_print(screen);
 	
-	ndc.x = (screen.x + canvasWidth * 0.5f) / canvasWidth;
-	ndc.y = (screen.y + canvasHeight * 0.5f) / canvasHeight;
+	ndc.x = (screen.x + right) / canvasWidth;
+	ndc.y = (screen.y + top) / canvasHeight;
 	raster.x = (int)(ndc.x * imgWidth);
 	raster.y = (int)((1 - ndc.y) * imgHeight);
+
+	if (screen.x < left || screen.x > right || screen.y < bottom || screen.y > top)
+		return false;
+
+	return true;
 }
 
 int main(int argc, const char** argv)
 {
 
-	mat44f camToWorld(0.871214f, 0.0f, -0.490904f, 0.0f, -0.192902f, 0.919559f, -0.342346f, 0.0f, 0.451415f, 0.392953f, 0.801132f, 0.0f, 14.777467f, 29.361945f, 50, 1.0f);
+	mat44f camToWorld(0.871214f, 0.0f, -0.490904f, 0.0f, -0.192902f, 0.919559f, -0.342346f, 0.0f, 0.451415f, 0.392953f, 0.801132f, 0.0f, 14.777467f, 29.361945f, 50, 1.0f);	
 	mat44f worldToCam = camToWorld.inverse();
 
-	float canvasWidth = 2;
-	float canvasHeight = 2;
+	float zNear = 0.1f;
+	float zFar = 100.0f;
+	float fov = 90 * DEG_TO_RAD;
+
+	float canvasSize = 2 * tan(fov * 0.5) * zNear;
+	std::cout << canvasSize;
+	float canvasWidth = canvasSize;
+	float canvasHeight = canvasSize;
 	uint32_t imgWidth = 512;
 	uint32_t imgHeight = 512;
+
+	mat44f stuff;
+	stuff[0][0] = -canvasSize / 2; //canvas X min
+	stuff[0][1] = canvasSize / 2; //canvas X max
+	stuff[0][2] = -canvasSize / 2;//canvas Y min
+	stuff[0][3] = canvasSize / 2; //canvas Y max
+
+	stuff[1][0] = imgWidth;
+	stuff[1][1] = imgHeight;
+
+	stuff[2][0] = canvasWidth;
+	stuff[2][1] = canvasHeight;
+
+	stuff[3][0] = zNear;
+	stuff[3][1] = zFar;
 
 	std::ofstream ofs;
 
@@ -151,16 +190,18 @@ int main(int argc, const char** argv)
 		const vec3f v2World(vert2.x, vert2.y, vert2.z);
 
 		vec3f v0raster, v1raster, v2raster;
-		computePixelCoordinates(v0World, v0raster, worldToCam, canvasWidth, canvasHeight, imgWidth, imgHeight);
-		computePixelCoordinates(v1World, v1raster, worldToCam, canvasWidth, canvasHeight, imgWidth, imgHeight);
-		computePixelCoordinates(v2World, v2raster, worldToCam, canvasWidth, canvasHeight, imgWidth, imgHeight);
+		bool v = true;
+		v &= computePixelCoordinates(v0World, v0raster, worldToCam, stuff);
+		v &= computePixelCoordinates(v1World, v1raster, worldToCam, stuff);
+		v &= computePixelCoordinates(v2World, v2raster, worldToCam, stuff);
 
-		ofs << "<line x1=\"" << v0raster.x << "\" y1=\"" << v0raster.y << "\" x2=\"" << v1raster.x << "\" y2=\"" << v1raster.y << "\" style=\"stroke:rgb(0,0,0);stroke-width:1\" />\n";
-		ofs << "<line x1=\"" << v1raster.x << "\" y1=\"" << v1raster.y << "\" x2=\"" << v2raster.x << "\" y2=\"" << v2raster.y << "\" style=\"stroke:rgb(0,0,0);stroke-width:1\" />\n";
-		ofs << "<line x1=\"" << v2raster.x << "\" y1=\"" << v2raster.y << "\" x2=\"" << v0raster.x << "\" y2=\"" << v0raster.y << "\" style=\"stroke:rgb(0,0,0);stroke-width:1\" />\n";
+		int val = v ? 0 : 255;
+
+		ofs << "<line x1=\"" << v0raster.x << "\" y1=\"" << v0raster.y << "\" x2=\"" << v1raster.x << "\" y2=\"" << v1raster.y << "\" style=\"stroke:rgb(" << val << ",0,0);stroke-width:1\" />\n";
+		ofs << "<line x1=\"" << v1raster.x << "\" y1=\"" << v1raster.y << "\" x2=\"" << v2raster.x << "\" y2=\"" << v2raster.y << "\" style=\"stroke:rgb(" << val << ",0,0);stroke-width:1\" />\n";
+		ofs << "<line x1=\"" << v2raster.x << "\" y1=\"" << v2raster.y << "\" x2=\"" << v0raster.x << "\" y2=\"" << v0raster.y << "\" style=\"stroke:rgb(" << val << ",0,0);stroke-width:1\" />\n";
 	}
 	ofs << "</svg>\n";
 	ofs.close();
-
 	return 0;
 }
