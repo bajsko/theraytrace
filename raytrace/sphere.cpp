@@ -12,7 +12,7 @@ bool Sphere::intersects(const Ray& ray, float& t) const
 	//d^2 = tca - l^2
 	//d = sqrt(tca - l^2)
 	float d2 = L.length() - tca * tca;
-	if (d2 > radius)
+	if (d2 > radius2())
 		return false;
 
 	float thc = sqrt(radius2() - d2);

@@ -18,25 +18,28 @@
 
 struct ImageOptions
 {
-	int width;
-	int height;
+	uint32_t width;
+	uint32_t height;
 	float fov;
 };
-
-void computeRay(Ray& ray, const int x, const int y, const ImageOptions& options, const vec3f& camOrig, mat44f& camToWorld)
+bool bol = false;
+void computeRay(Ray& ray, const uint32_t x, const uint32_t y, const ImageOptions& options, const vec3f& camOrig, mat44f& camToWorld)
 {
 	float aspect = (float)options.width / (float)options.height;
-	float tanfov = tan(options.fov / 2);
+	float tanfov = tan(options.fov * 0.5f);
 
-	vec3f pixelNDC((x + 0.5f) / (float)options.width, (y + 0.5f) / (float)options.height, 0);
-	vec3f pixelScreen(2 * pixelNDC.x - 1, 1 - 2 * pixelNDC.y, 0);
-	vec3f pixelCam(pixelScreen.x * aspect * tanfov, pixelScreen.y * tanfov, -1);
-	vec3f worldPos;
-	camToWorld.multVec(pixelCam, worldPos);
 
-	ray.pos = camOrig;
-	ray.dir = worldPos - camOrig;
-	ray.dir.normalize();
+	float xx = (2 * (x + 0.5) / (float)options.width - 1) * aspect * tanfov;
+	float yy = (1 - 2 * (y + 0.5) / (float)options.height) * tanfov;
+
+	vec3f camWorldPos;
+	vec3f rayWorldPos;
+
+	camToWorld.multVec(camOrig, camWorldPos);
+	camToWorld.multVec(vec3f(xx, yy, -1), rayWorldPos);
+
+	ray.pos = camWorldPos;
+	ray.dir = (rayWorldPos - camWorldPos).normalize();
 }
 
 vec3f castRay(const Ray& ray, const std::vector<Object*>& objects)
@@ -46,11 +49,16 @@ vec3f castRay(const Ray& ray, const std::vector<Object*>& objects)
 
 	const Object* object = NULL;
 	float t = 0;
+	float minDist = INFINITY;
 	for (int i = 0; i < objects.size(); i++)
 	{
 		if (objects[i]->intersects(ray, t))
 		{
-			object = objects[i];
+			if (t < minDist)
+			{
+				object = objects[i];
+				minDist = t;
+			}
 		}
 	}
 
@@ -70,12 +78,11 @@ void render(const ImageOptions& options, const std::vector<Object*>& objects)
 
 	vec3f* pix = frameBuffer;
 
-	mat44f worldToCam;
-	mat44f camToWorld = worldToCam.inverse();
+	mat44f camToWorld = Mat44Util::look_at(vec3f(0, 0, 0), vec3f(0, 0, -1));
 
-	for (int x = 0; x < options.width; x++)
+	for (uint32_t y = 0; y < options.height; y++)
 	{
-		for (int y = 0; y < options.height; y++)
+		for (uint32_t x = 0; x < options.width; x++)
 		{
 			Ray primRay;
 			computeRay(primRay, x, y, options, vec3f(0), camToWorld);
@@ -100,12 +107,15 @@ void render(const ImageOptions& options, const std::vector<Object*>& objects)
 int main(int argc, const char * argv[]) {
   
 	std::vector<Object*> objects;
-	objects.push_back(new Sphere(vec3f(0, 0, -10), 30, vec3f(1,0,1)));
+	objects.push_back(new Sphere(vec3f(0, 0, -100), 30, vec3f(1,0,1)));
+	objects.push_back(new Sphere(vec3f(10, 0, -50), 20, vec3f(1, 1, 1)));
 
 	ImageOptions options;
-	options.width = 512;
-	options.height = 512;
+	options.width = 640;
+	options.height = 480;
 	options.fov = 90 * DEG_TO_RAD;
+
+	int i;
 
 	render(options, objects);
 }

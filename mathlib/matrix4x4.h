@@ -79,11 +79,11 @@ public:
 		}
 	}
 
-	void multDirVec(const Vec3<T>& src, Vec3<T> dst) const
+	void multDirVec(const Vec3<T>& src, Vec3<T>& dst) const
 	{
-		dst.x = src.x * m[0][0] + src.y * m[1][0] + src.z * m[2][0] + m[3][0];
-		dst.y = src.y * m[0][1] + src.y * m[1][1] + src.z * m[2][1] + m[3][1];
-		dst.z = src.z * m[0][2] + src.y * m[1][2] + src.z * m[2][2] + m[3][2];
+		dst.x = src.x * m[0][0] + src.y * m[1][0] + src.z * m[2][0];
+		dst.y = src.x * m[0][1] + src.y * m[1][1] + src.z * m[2][1];
+		dst.z = src.x * m[0][2] + src.y * m[1][2] + src.z * m[2][2];
 	}
 
 	Matrix4x4<T> transpose() const
