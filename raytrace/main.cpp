@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <vector>
+#include <time.h>
 
 #include "vec3.h"
 #include "matrix4x4.h"
@@ -22,7 +23,12 @@ struct ImageOptions
 	uint32_t height;
 	float fov;
 };
-bool bol = false;
+
+inline vec3f mix(const vec3f& a, const vec3f& b, const float& t)
+{
+	return vec3f(a.x*(1 - t) + b.x*t, a.y*(1 - t) + b.y*t, a.z*(1 - t) + b.z*t);
+}
+
 void computeRay(Ray& ray, const uint32_t x, const uint32_t y, const ImageOptions& options, const vec3f& camOrig, mat44f& camToWorld)
 {
 	float aspect = (float)options.width / (float)options.height;
@@ -42,7 +48,7 @@ void computeRay(Ray& ray, const uint32_t x, const uint32_t y, const ImageOptions
 	ray.dir = (rayWorldPos - camWorldPos).normalize();
 }
 
-vec3f castRay(const Ray& ray, const std::vector<Object*>& objects)
+vec3f castRay(const Ray& ray, const std::vector<Object*>& objects, vec3f lightPos)
 {
 
 	vec3f hitColor;
@@ -64,7 +70,30 @@ vec3f castRay(const Ray& ray, const std::vector<Object*>& objects)
 
 	if (object != NULL)
 	{
-		hitColor = object->color;
+		vec3f pHit = ray.pos + (ray.dir * t);
+		Ray shadowRay;
+		shadowRay.dir = (lightPos - pHit).normalize();
+		shadowRay.pos = pHit;
+		
+		bool inShadow = false;
+
+		for (int i = 0; i < objects.size(); i++)
+		{
+			if (objects[i]->intersects(shadowRay, t))
+			{
+				inShadow = true;
+				break;
+			}
+		}
+
+		Sphere* sphere = (Sphere*)object;
+		vec3f norm = (pHit - sphere->center).normalize();
+
+		float phi = (1 + atan2(norm.z, norm.x)) / M_PI;
+		float theta = acos(norm.y) / M_PI;
+		float scale = 8;
+		float pattern = (fmodf(theta * scale, 1) > 0.5) ^ (fmodf(phi * scale, 1) > 0.5);
+		hitColor = mix(object->color, object->color * 0.8f, pattern) * norm.dot(shadowRay.dir);
 	}
 
 	return hitColor;
@@ -86,7 +115,7 @@ void render(const ImageOptions& options, const std::vector<Object*>& objects)
 		{
 			Ray primRay;
 			computeRay(primRay, x, y, options, vec3f(0), camToWorld);
-			*(pix++) = castRay(primRay, objects);
+			*(pix++) = castRay(primRay, objects, vec3f(100,40,-50));
 		}
 	}
 
@@ -104,11 +133,25 @@ void render(const ImageOptions& options, const std::vector<Object*>& objects)
 	delete[] frameBuffer;
 }
 
+inline float rand01()
+{
+	return (float)rand() / (float)RAND_MAX;
+}
+
 int main(int argc, const char * argv[]) {
   
+	srand(time(NULL));
+
 	std::vector<Object*> objects;
-	objects.push_back(new Sphere(vec3f(0, 0, -100), 30, vec3f(1,0,1)));
-	objects.push_back(new Sphere(vec3f(10, 0, -50), 20, vec3f(1, 1, 1)));
+	float r = rand01() * 10;
+	int spheres = (int)(r);
+	for (int i = 0; i < spheres; i++)
+	{
+		vec3f pos = vec3f(rand01() * 50, rand01() * 100, -(rand01() * 120));
+		float radius = rand01() * 35 + 1;
+		vec3f color = vec3f(rand01(), rand01(), rand01());
+		objects.push_back(new Sphere(pos, radius, color));
+	}
 
 	ImageOptions options;
 	options.width = 640;
