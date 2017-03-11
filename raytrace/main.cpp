@@ -9,6 +9,9 @@
 #include <iostream>
 #include <vector>
 #include <time.h>
+#include <algorithm>
+#include <utility>
+#include <limits>
 
 #include "vec3.h"
 #include "matrix4x4.h"
@@ -48,52 +51,54 @@ void computeRay(Ray& ray, const uint32_t x, const uint32_t y, const ImageOptions
 	ray.dir = (rayWorldPos - camWorldPos).normalize();
 }
 
+bool trace(const Ray& ray, const std::vector<Object*>& objects, Object*& hitObject, float& minDist)
+{
+    std::vector<Object*>::const_iterator it = objects.begin();
+    float t = INFINITY;
+    minDist = INFINITY;
+    hitObject = NULL;
+    for(; it != objects.end(); it++)
+    {
+        if((*it)->intersects(ray, t) && t < minDist)
+        {
+            hitObject = (*it);
+            minDist = t;
+        }
+    }
+    
+    return (hitObject != NULL);
+}
+
 vec3f castRay(const Ray& ray, const std::vector<Object*>& objects, vec3f lightPos)
 {
 
 	vec3f hitColor;
-
-	const Object* object = NULL;
-	float t = 0;
-	float minDist = INFINITY;
-	for (int i = 0; i < objects.size(); i++)
+    Object* object = NULL;
+    
+    float minDist;
+    
+	if (trace(ray, objects, object, minDist))
 	{
-		if (objects[i]->intersects(ray, t))
-		{
-			if (t < minDist)
-			{
-				object = objects[i];
-				minDist = t;
-			}
-		}
-	}
-
-	if (object != NULL)
-	{
-		vec3f pHit = ray.pos + (ray.dir * t);
-		Ray shadowRay;
-		shadowRay.dir = (lightPos - pHit).normalize();
-		shadowRay.pos = pHit;
-		
-		bool inShadow = false;
-
-		for (int i = 0; i < objects.size(); i++)
-		{
-			if (objects[i]->intersects(shadowRay, t))
-			{
-				inShadow = true;
-				break;
-			}
-		}
-
-		Sphere* sphere = (Sphere*)object;
-		vec3f norm = (pHit - sphere->center).normalize();
-
-		float phi = (1 + atan2(norm.z, norm.x)) / M_PI;
-		float theta = acos(norm.y) / M_PI;
-		float scale = 8;
-		float pattern = (fmodf(theta * scale, 1) > 0.5) ^ (fmodf(phi * scale, 1) > 0.5);
-		hitColor = mix(object->color, object->color * 0.8f, pattern) * norm.dot(shadowRay.dir);
+		vec3f pHit = ray.pos + (ray.dir * minDist);
+        vec3f norm;
+        vec3f texCoord;
+        
+        object->getSurfaceData(pHit, norm, texCoord);
+        
+        Ray shadowRay(pHit + norm * 1e-5, vec3f(0));
+        shadowRay.dir = (lightPos - shadowRay.pos).normalize();
+        Object* shadowObject = NULL;
+        bool inShadow = false;
+        inShadow = !trace(shadowRay, objects, shadowObject, minDist);
+        
+		float scale = 16;
+		float pattern = (fmodf(texCoord.y * scale, 1) > 0.5) ^ (fmodf(texCoord.x * scale, 1) > 0.5);
+        vec3f invRayDir = vec3f(-ray.dir.x, -ray.dir.y, -ray.dir.z);
+        
+        hitColor = mix(object->color, object->color * 0.8f, pattern) * norm.dot((lightPos - pHit).normalize()) * inShadow;
+        clamp<float>(hitColor.x, 0.0f, 1);
+        clamp<float>(hitColor.y, 0.0f, 1);
+        clamp<float>(hitColor.z, 0.0f, 1);
 	}
 
 	return hitColor;
@@ -107,7 +112,7 @@ void render(const ImageOptions& options, const std::vector<Object*>& objects)
 
 	vec3f* pix = frameBuffer;
 
-	mat44f camToWorld = Mat44Util::look_at(vec3f(0, 0, 0), vec3f(0, 0, -1));
+	mat44f camToWorld = Mat44Util::look_at(vec3f(0, 5.5f, 40), vec3f(0, 0, -100));
 
 	for (uint32_t y = 0; y < options.height; y++)
 	{
@@ -115,7 +120,7 @@ void render(const ImageOptions& options, const std::vector<Object*>& objects)
 		{
 			Ray primRay;
 			computeRay(primRay, x, y, options, vec3f(0), camToWorld);
-			*(pix++) = castRay(primRay, objects, vec3f(100,40,-50));
+			*(pix++) = castRay(primRay, objects, vec3f(0,40,-15));
 		}
 	}
 
@@ -143,20 +148,18 @@ int main(int argc, const char * argv[]) {
 	srand(time(NULL));
 
 	std::vector<Object*> objects;
-	float r = rand01() * 10;
-	int spheres = (int)(r);
-	for (int i = 0; i < spheres; i++)
-	{
-		vec3f pos = vec3f(rand01() * 50, rand01() * 100, -(rand01() * 120));
-		float radius = rand01() * 35 + 1;
-		vec3f color = vec3f(rand01(), rand01(), rand01());
-		objects.push_back(new Sphere(pos, radius, color));
-	}
+    
+    objects.push_back(new Plane(vec3f(0,0,-100), vec3f(0,1,0), vec3f(1.0/2.0f,1.0/2.0f,1.0/2.0f)));
+    objects.push_back(new Sphere(vec3f(0,10,-15), 5, vec3f(1,1,1)));
+    objects.push_back(new Sphere(vec3f(-10,10,-15), 5, vec3f(1,1,1)));
+    objects.push_back(new Sphere(vec3f(10,10,-15), 5, vec3f(1,1,1)));
+    
+    std::cout << "num spheres: " << objects.size() << std::endl;
 
 	ImageOptions options;
 	options.width = 640;
 	options.height = 480;
-	options.fov = 90 * DEG_TO_RAD;
+	options.fov = 120 * DEG_TO_RAD;
 
 	int i;
 

@@ -35,6 +35,19 @@ bool Sphere::intersects(const Ray& ray, float& t) const
 	return true;
 }
 
+void Sphere::getSurfaceData(const vec3f &hit, vec3f &normal, vec3f &texCoord) const
+{
+    vec3f n = (hit - center).normalize();
+    
+    normal = n;
+    
+    float phi = (1 + atan2(n.z, n.x) / M_PI) * 0.5f;
+    float theta = acos(hit.y/radius) / M_PI;
+    
+    texCoord.x = phi;
+    texCoord.y = theta;
+}
+
 float Sphere::radius2() const 
 {
 	return radius*radius;

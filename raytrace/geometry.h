@@ -1,5 +1,5 @@
 //
-//	ray.h
+//	geometry.h
 //  theraytracer
 //
 //	Contains basic classes for dealing with the most common geometric shapes
@@ -22,6 +22,7 @@ public:
 
 	virtual ~Object() {}
 	virtual bool intersects(const Ray& ray, float& t) const = 0;
+    virtual void getSurfaceData(const vec3f& hit, vec3f& normal, vec3f& texCoord) const = 0;
 
 	vec3f color;
 };
@@ -34,8 +35,23 @@ public:
 	~Sphere() {}
 
 	bool intersects(const Ray& ray, float& t) const;
+    void getSurfaceData(const vec3f& hit, vec3f& normal, vec3f& texCoord) const;
 	float radius2() const;
 
 	float radius;
 	vec3f center;
+};
+
+class Plane : public Object
+{
+public:
+    Plane(const vec3f& cntr, const vec3f& norm) : center(cntr.x, cntr.y, cntr.z), normal(norm.x, norm.y, norm.z) {}
+    Plane(const vec3f& cntr, const vec3f& norm, const vec3f& clr) : center(cntr.x, cntr.y, cntr.z),
+    normal(norm.x, norm.y, norm.z), Object(clr) {}
+    
+    bool intersects(const Ray& ray, float& t) const;
+    void getSurfaceData(const vec3f& hit, vec3f& normal, vec3f& texCoord) const;
+    
+    vec3f center;
+    vec3f normal;
 };
