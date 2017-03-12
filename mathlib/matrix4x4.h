@@ -22,7 +22,7 @@ class Matrix4x4
 public:
 	Matrix4x4() {}
 	Matrix4x4(const T* array) { memcpy((void*)m, (void*)array, sizeof(T) * 16); }
-    Matrix4x4(const Matrix4x4<T>& ref) { memcpy((void*)ref.m, (void*)m, sizeof(T) * 16); }
+    Matrix4x4(const Matrix4x4<T>& ref) { memcpy((void*)m , (void*)ref.m,sizeof(T) * 16); }
 	Matrix4x4(T m1, T m2, T m3, T m4, T m5, T m6, T m7, T m8, T m9, T m10,
 		T m11, T m12, T m13, T m14, T m15, T m16) 
 	{

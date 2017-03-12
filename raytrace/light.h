@@ -28,10 +28,12 @@ public:
 
 class DistantLight : public Light
 {
+public:
     DistantLight(const mat44f& l2w, const vec3f& c, const float& i) :
     Light(l2w, c, i)
     {
-        l2w.multDirVec(vec3f(0,0,-1), dir);
+        //lightToWorld.multDirVec(vec3f(0,0,-1), dir);
+        dir = vec3f(0,-5,-5).normalize();
     }
     
     vec3f dir;
@@ -39,7 +41,13 @@ class DistantLight : public Light
 
 class PointLight : public Light
 {
+public:
+    PointLight(const mat44f& l2w, const vec3f& c, const float& i) : Light(l2w, c, i)
+    {
+        l2w.multVec(vec3f(0,0,0), pos);
+    }
     
+    vec3f pos;
 };
 
 #endif /* light_h */

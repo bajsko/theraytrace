@@ -16,15 +16,15 @@ class Object
 {
 public:
 
-	Object() { color = vec3f(0); }
-	Object(const vec3f& c) : color(c.x, c.y, c.z) {}
-	Object(float r, float g, float b) : color(r, g, b) {}
+	Object() { albedo = vec3f(0); }
+	Object(const vec3f& c) : albedo(c.x, c.y, c.z) {}
+	Object(float r, float g, float b) : albedo(r, g, b) {}
 
 	virtual ~Object() {}
 	virtual bool intersects(const Ray& ray, float& t) const = 0;
     virtual void getSurfaceData(const vec3f& hit, vec3f& normal, vec3f& texCoord) const = 0;
 
-	vec3f color;
+	vec3f albedo;
 };
 
 class Sphere : public Object
