@@ -21,6 +21,8 @@ public:
     color(c.x, c.y, c.z), intensity(i) {}
     virtual ~Light() {}
     
+    virtual void getShadingInfo(const vec3f& hitPoint, vec3f& lightDir, vec3f& lightIntensity, float& dist) const = 0;
+    
     mat44f lightToWorld;
     vec3f color;
     float intensity;
@@ -32,8 +34,16 @@ public:
     DistantLight(const mat44f& l2w, const vec3f& c, const float& i) :
     Light(l2w, c, i)
     {
-        //lightToWorld.multDirVec(vec3f(0,0,-1), dir);
-        dir = vec3f(0,-5,-5).normalize();
+        lightToWorld.multDirVec(vec3f(0,0,-1), dir);
+        dir.normalize();
+        //dir = vec3f(0,-5,-5).normalize();
+    }
+    
+    void getShadingInfo(const vec3f& hitPoint, vec3f& lightDir, vec3f& lightIntensity, float& dist) const
+    {
+        lightDir = dir;
+        lightIntensity = color * intensity;
+        dist = INFINITY;
     }
     
     vec3f dir;
@@ -45,6 +55,16 @@ public:
     PointLight(const mat44f& l2w, const vec3f& c, const float& i) : Light(l2w, c, i)
     {
         l2w.multVec(vec3f(0,0,0), pos);
+    }
+    
+    void getShadingInfo(const vec3f& P, vec3f& lightDir,
+                                  vec3f& lightIntensity, float& dist) const
+    {
+        lightDir = P - pos;
+        float r2 = lightDir.length();
+        dist = sqrt(r2);
+        lightDir.normalize();
+        lightIntensity = (color * intensity) * (1/(4*M_PI*r2));
     }
     
     vec3f pos;

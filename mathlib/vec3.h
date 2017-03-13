@@ -25,6 +25,7 @@ public:
     Vec3() : x(T(0)), y(T(0)), z(T(0)) {}
     Vec3(T xx) : x(xx), y(xx), z(xx) {}
     Vec3(T xx, T yy, T zz) : x(xx), y(yy), z(zz) {}
+    Vec3(const Vec3<T>& r) : x(r.x), y(r.y), z(r.z) {}
     
 	Vec3<T>& operator = (const Vec3<T>& rhs)
 	{
@@ -41,6 +42,8 @@ public:
 	Vec3<T> operator + (const Vec3<T> &v) const { return Vec3<T>(x + v.x, y + v.y, z + v.z); }
 	Vec3<T> operator - (const Vec3<T> &v) const { return Vec3<T>(x - v.x, y - v.y, z - v.z); }
 	Vec3<T> operator * (const Vec3<T> &v) const { return Vec3<T>(x * v.x, y * v.y, z * v.z); }
+    
+    void operator += (const Vec3<T> &v) { x += v.x; y += v.y; z += v.z; }
     
 	T length() const { return (x * x + y * y + z * z); }
 	T lengthSquared() const { return sqrt((x * x + y * y + z * z)); }
