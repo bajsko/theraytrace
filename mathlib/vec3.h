@@ -67,7 +67,7 @@ public:
         return Vec3<T>(
             y * v.z - z * v.y,
             z * v.x - x * v.z,
-            x * v.y - v.y * x);
+            x * v.y - y * v.x);
     }
     
 	T x, y, z;
