@@ -21,11 +21,19 @@
 #include "geometry.h"
 #include "light.h"
 
-struct ImageOptions
+struct Options
 {
     uint32_t width;
     uint32_t height;
+    uint32_t maxDepth;
     float fov;
+    vec3f backgroundColor;
+};
+
+struct IHitInfo
+{
+    const Object* hitObject = NULL;
+    float distance = INFINITY;
 };
 
 inline vec3f mix(const vec3f& a, const vec3f& b, const float& t)
@@ -33,7 +41,14 @@ inline vec3f mix(const vec3f& a, const vec3f& b, const float& t)
     return vec3f(a.x*(1 - t) + b.x*t, a.y*(1 - t) + b.y*t, a.z*(1 - t) + b.z*t);
 }
 
-void computeRay(Ray& ray, const uint32_t x, const uint32_t y, const ImageOptions& options, const vec3f& camOrig, mat44f& camToWorld)
+inline vec3f reflect(const vec3f& N, const vec3f& I)
+{
+    vec3f B = N * N.dot(I);
+    vec3f A = I - B;
+    return A - B;
+}
+
+void computeRay(Ray& ray, const uint32_t x, const uint32_t y, const Options& options, const vec3f& camOrig, const mat44f& camToWorld)
 {
     float aspect = (float)options.width / (float)options.height;
     float tanfov = tan(options.fov * 0.5f);
@@ -52,58 +67,78 @@ void computeRay(Ray& ray, const uint32_t x, const uint32_t y, const ImageOptions
     ray.dir = (rayWorldPos - camWorldPos).normalize();
 }
 
-bool trace(const Ray& ray, const std::vector<Object*>& objects, Object*& hitObject, float& minDist)
+bool trace(const Ray& ray, const std::vector<Object*>& objects, IHitInfo& hitInfo)
 {
     std::vector<Object*>::const_iterator it = objects.begin();
     float t = INFINITY;
-    minDist = INFINITY;
-    hitObject = NULL;
+    hitInfo.distance = INFINITY;
     for(; it != objects.end(); it++)
     {
-        if((*it)->intersects(ray, t) && t < minDist && t < ray.tMax)
+        if((*it)->intersects(ray, t) && t < hitInfo.distance && t < ray.tMax)
         {
-            hitObject = (*it);
-            minDist = t;
+            hitInfo.hitObject = (*it);
+            hitInfo.distance = t;
         }
     }
     
-    return (hitObject != NULL);
+    return (hitInfo.hitObject != NULL);
 }
 
 vec3f castRay(const Ray& ray, const std::vector<Object*>& objects,
-              const std::vector<Light*>& lights)
+              const std::vector<Light*>& lights, const Options& options, const float& depth = 0)
 {
+    
+    if(depth > options.maxDepth)
+        return options.backgroundColor;
+    
     float bias = 1e-5;
+    vec3f hitColor = options.backgroundColor;
+    IHitInfo info;
     
-    vec3f hitColor;
-    Object* object = NULL;
-    
-    float minDist;
-    
-    if (trace(ray, objects, object, minDist))
+    if (trace(ray, objects, info))
     {
-        vec3f pHit = ray.pos + (ray.dir * minDist);
+        hitColor = vec3f();
+        
+        vec3f pHit = ray.pos + (ray.dir * info.distance);
         vec3f norm;
         vec3f texCoord;
         
-        object->getSurfaceData(pHit, norm, texCoord);
+        info.hitObject->getSurfaceData(pHit, norm, texCoord);
         
-        for(int i = 0; i < lights.size(); i++)
-        {
-            vec3f lightDir;
-            vec3f lightIntensity;
-            float lightDist = 0;
-            
-            lights[i]->getShadingInfo(pHit, lightDir, lightIntensity, lightDist);
-            
-            Object* shadowObject = NULL;
-            Ray shadowRay = Ray(pHit + norm * bias, lightDir * -1);
-            shadowRay.type = kRayTypeShadow;
-            shadowRay.tMax = lightDist;
-            
-            bool vis = !trace(shadowRay, objects, shadowObject, minDist);
-            
-            hitColor += object->albedo * lightIntensity * vis * std::max(0.0f, norm.dot(lightDir * -1));
+        switch (info.hitObject->type) {
+            case kDiffuse:
+            {
+                for(int i = 0; i < lights.size(); i++)
+                {
+                    vec3f lightDir;
+                    vec3f lightIntensity;
+                    float lightDist = 0;
+                    
+                    lights[i]->getShadingInfo(pHit, lightDir, lightIntensity, lightDist);
+                    
+                    IHitInfo shadowInfo;
+                    Ray shadowRay = Ray(pHit + norm * bias, lightDir * -1);
+                    shadowRay.type = kRayTypeShadow;
+                    shadowRay.tMax = lightDist;
+                    
+                    bool vis = !trace(shadowRay, objects, shadowInfo);
+                    
+                    hitColor += info.hitObject->albedo * lightIntensity * vis * std::max(0.0f, norm.dot(lightDir * -1));
+                }
+                
+                break;
+            }
+                
+            case kReflection:
+            {
+                vec3f R = reflect(norm, ray.dir);
+                Ray reflectionRay(pHit + norm * bias, R);
+                hitColor += castRay(reflectionRay, objects, lights, options, depth + 1) * 0.8f;
+                break;
+            }
+                
+            default:
+                break;
         }
     }
     
@@ -114,7 +149,7 @@ vec3f castRay(const Ray& ray, const std::vector<Object*>& objects,
     return hitColor;
 }
 
-void render(const ImageOptions& options, const std::vector<Object*>& objects,
+void render(const Options& options, const std::vector<Object*>& objects,
             const std::vector<Light*>& lights)
 {
     vec3f* frameBuffer = new vec3f[options.width * options.height];
@@ -131,7 +166,7 @@ void render(const ImageOptions& options, const std::vector<Object*>& objects,
         {
             Ray primRay;
             computeRay(primRay, x, y, options, vec3f(0), camToWorld);
-            *(pix++) = castRay(primRay, objects, lights);
+            *(pix++) = castRay(primRay, objects, lights, options);
         }
     }
     
@@ -161,7 +196,10 @@ int main(int argc, const char * argv[]) {
     std::vector<Object*> objects;
     std::vector<Light*> lights;
     
-    objects.push_back(new Disk(vec3f(0,-1.0f,0), vec3f(0,1,0), 30, vec3f(0.18f)));
+    Disk* disk = new Disk(vec3f(0,-1.0f,0), vec3f(0,1,0), 30, vec3f(0.18f));
+    disk->type = kReflection;
+    
+    objects.push_back(disk);
     objects.push_back(new Sphere(vec3f(-5,2,10), 3, vec3f(0.18f)));
     objects.push_back(new Sphere(vec3f(5,2,5), 3, vec3f(0.18f)));
     
@@ -177,16 +215,18 @@ int main(int argc, const char * argv[]) {
     lights.push_back(new PointLight(distLightMat, vec3f(1.0f, 0.3f, 0.3f), 3200));
     
     distLightMat[3][0] = -10;
-    distLightMat[3][1] = 2;
+    distLightMat[3][1] = 3;
     distLightMat[3][2] = -0.5f;
     lights.push_back(new PointLight(distLightMat, vec3f(0.3f, 0.3f, 1.0f), 5000));
     
     std::cout << "num objects: " << objects.size() << std::endl;
     
-    ImageOptions options;
-    options.width = 1280;
-    options.height = 800;
+    Options options;
+    options.width = 640;
+    options.height = 480;
     options.fov = 70 * DEG_TO_RAD;
+    options.backgroundColor = vec3f(0.25f, 0.52f, 0.95f);
+    options.maxDepth = 3;
     
     render(options, objects, lights);
 }

@@ -42,7 +42,7 @@ public:
     void getShadingInfo(const vec3f& hitPoint, vec3f& lightDir, vec3f& lightIntensity, float& dist) const
     {
         lightDir = dir;
-        lightIntensity = color * intensity;
+        lightIntensity = color * intensity * (1/M_PI);
         dist = INFINITY;
     }
     

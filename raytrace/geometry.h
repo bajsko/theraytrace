@@ -12,6 +12,12 @@
 
 #include "ray.h"
 
+enum ObjectType
+{
+    kDiffuse,
+    kReflection,
+};
+
 class Object
 {
 public:
@@ -25,6 +31,7 @@ public:
     virtual void getSurfaceData(const vec3f& hit, vec3f& normal, vec3f& texCoord) const = 0;
 
 	vec3f albedo;
+    ObjectType type = kDiffuse;
 };
 
 class Sphere : public Object
