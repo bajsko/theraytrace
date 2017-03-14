@@ -133,7 +133,7 @@ vec3f castRay(const Ray& ray, const std::vector<Object*>& objects,
             {
                 vec3f R = reflect(norm, ray.dir);
                 Ray reflectionRay(pHit + norm * bias, R);
-                hitColor += castRay(reflectionRay, objects, lights, options, depth + 1) * 0.8f;
+                hitColor += castRay(reflectionRay, objects, lights, options, depth + 1) * 0.6f;
                 break;
             }
                 
@@ -158,7 +158,7 @@ void render(const Options& options, const std::vector<Object*>& objects,
     
     vec3f* pix = frameBuffer;
     
-    mat44f camToWorld = Mat44Util::look_at(vec3f(0, 10, -20), vec3f(0, 3, 0));
+    mat44f camToWorld = Mat44Util::look_at(vec3f(0, 10, -20), vec3f(0, 0, -1));
     
     for (uint32_t y = 0; y < options.height; y++)
     {
@@ -197,11 +197,15 @@ int main(int argc, const char * argv[]) {
     std::vector<Light*> lights;
     
     Disk* disk = new Disk(vec3f(0,-1.0f,0), vec3f(0,1,0), 30, vec3f(0.18f));
-    disk->type = kReflection;
+    disk->type = kDiffuse;
     
     objects.push_back(disk);
     objects.push_back(new Sphere(vec3f(-5,2,10), 3, vec3f(0.18f)));
     objects.push_back(new Sphere(vec3f(5,2,5), 3, vec3f(0.18f)));
+    
+    Sphere* refletionSphere = new Sphere(vec3f(0,2,5), 1.4f, vec3f(0.18f));
+    refletionSphere->type = kReflection;
+    objects.push_back(refletionSphere);
     
     mat44f distLightMat;
     distLightMat[2][0] = 3;
@@ -211,7 +215,7 @@ int main(int argc, const char * argv[]) {
     
     distLightMat[3][0] = 0;
     distLightMat[3][1] = 5;
-    distLightMat[3][2] = 0;
+    distLightMat[3][2] = 4;
     lights.push_back(new PointLight(distLightMat, vec3f(1.0f, 0.3f, 0.3f), 3200));
     
     distLightMat[3][0] = -10;
@@ -219,13 +223,18 @@ int main(int argc, const char * argv[]) {
     distLightMat[3][2] = -0.5f;
     lights.push_back(new PointLight(distLightMat, vec3f(0.3f, 0.3f, 1.0f), 5000));
     
+    distLightMat[3][0] = 10;
+    distLightMat[3][1] = 3;
+    distLightMat[3][2] = -0.5f;
+    lights.push_back(new PointLight(distLightMat, vec3f(-3.0f, 6.0f, 0.4f), 500));
+    
     std::cout << "num objects: " << objects.size() << std::endl;
     
     Options options;
-    options.width = 640;
-    options.height = 480;
+    options.width = 1920;
+    options.height = 1080;
     options.fov = 70 * DEG_TO_RAD;
-    options.backgroundColor = vec3f(0.25f, 0.52f, 0.95f);
+    options.backgroundColor = vec3f(0);/*vec3f(66/255.0f, 134/255.0f, 244/255.0f);*/
     options.maxDepth = 3;
     
     render(options, objects, lights);
