@@ -223,10 +223,10 @@ int main(int argc, const char * argv[]) {
     distLightMat[3][2] = -0.5f;
     lights.push_back(new PointLight(distLightMat, vec3f(0.3f, 0.3f, 1.0f), 5000));
     
-    distLightMat[3][0] = 10;
+    distLightMat[3][0] = 15;
     distLightMat[3][1] = 3;
     distLightMat[3][2] = -0.5f;
-    lights.push_back(new PointLight(distLightMat, vec3f(-3.0f, 6.0f, 0.4f), 500));
+    lights.push_back(new PointLight(distLightMat, vec3f(-0.3f, 1.0f, 0.4f), 5000));
     
     std::cout << "num objects: " << objects.size() << std::endl;
     
