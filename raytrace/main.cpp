@@ -196,14 +196,14 @@ int main(int argc, const char * argv[]) {
     std::vector<Object*> objects;
     std::vector<Light*> lights;
     
-    Disk* disk = new Disk(vec3f(0,-1.0f,0), vec3f(0,1,0), 30, vec3f(0.18f));
+    Disk* disk = new Disk(vec3f(0,-1.0f,0), vec3f(0,1,0), 30, vec3f(0.3f));
     disk->type = kDiffuse;
     
     objects.push_back(disk);
-    objects.push_back(new Sphere(vec3f(-5,2,10), 3, vec3f(0.18f)));
+    objects.push_back(new Sphere(vec3f(-5,2,10), 3, vec3f(0.5f)));
     objects.push_back(new Sphere(vec3f(5,2,5), 3, vec3f(0.18f)));
     
-    Sphere* refletionSphere = new Sphere(vec3f(0,2,5), 1.4f, vec3f(0.18f));
+    Sphere* refletionSphere = new Sphere(vec3f(0,2,5), 2.0f, vec3f(0.8f));
     refletionSphere->type = kReflection;
     objects.push_back(refletionSphere);
     
@@ -213,20 +213,16 @@ int main(int argc, const char * argv[]) {
     distLightMat[2][2] = 4;
     lights.push_back(new DistantLight(distLightMat, vec3f(1.0f, 1.0f, 1.0f), 0.0f));
     
-    distLightMat[3][0] = 0;
-    distLightMat[3][1] = 5;
-    distLightMat[3][2] = 4;
-    lights.push_back(new PointLight(distLightMat, vec3f(1.0f, 0.3f, 0.3f), 3200));
-    
     distLightMat[3][0] = -10;
     distLightMat[3][1] = 3;
-    distLightMat[3][2] = -0.5f;
-    lights.push_back(new PointLight(distLightMat, vec3f(0.3f, 0.3f, 1.0f), 5000));
+    distLightMat[3][2] = 3.0f;
+    lights.push_back(new PointLight(distLightMat, vec3f(0.3f, 0.3f, 1.0f), 2000));
     
-    distLightMat[3][0] = 15;
-    distLightMat[3][1] = 3;
-    distLightMat[3][2] = -0.5f;
-    lights.push_back(new PointLight(distLightMat, vec3f(-0.3f, 1.0f, 0.4f), 5000));
+    distLightMat[3][0] = 8;
+    distLightMat[3][1] = 5
+    ;
+    distLightMat[3][2] = -2.5f;
+    lights.push_back(new PointLight(distLightMat, vec3f(0.3f, 1.0f, 0.4f), 1500));
     
     std::cout << "num objects: " << objects.size() << std::endl;
     
@@ -234,7 +230,7 @@ int main(int argc, const char * argv[]) {
     options.width = 1920;
     options.height = 1080;
     options.fov = 70 * DEG_TO_RAD;
-    options.backgroundColor = vec3f(0);/*vec3f(66/255.0f, 134/255.0f, 244/255.0f);*/
+    options.backgroundColor = vec3f(/*66/255.0f, 134/255.0f, 244/255.0f*/0);
     options.maxDepth = 3;
     
     render(options, objects, lights);
